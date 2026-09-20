@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { resolveGatewayKey, listProviderModels } from "@/lib/gateway";
+export const runtime = "nodejs";
+export async function GET(req:Request){const key=req.headers.get("authorization")?.replace(/^Bearer\s+/i,"").trim();if(!key)return NextResponse.json({error:{message:"Missing Bearer token",type:"invalid_request_error"}},{status:401});const c=await resolveGatewayKey(key);if(!c)return NextResponse.json({error:{message:"Invalid API key",type:"authentication_error"}},{status:401});try{const models=await listProviderModels(c);return NextResponse.json({object:"list",data:models.map(m=>({id:m.id,object:"model",owned_by:c.provider}))});}catch(e){return NextResponse.json({error:{message:e instanceof Error?e.message:"Model discovery failed",type:"provider_error"}},{status:502});}}

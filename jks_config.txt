@@ -1,0 +1,20 @@
+Git Way — Keystore / Secrets Setup
+===================================
+
+Smart Upload Protection found real credentials in this project and replaced
+them with placeholders before uploading, so nothing sensitive ever reached
+GitHub. Files touched:
+
+ - .env.example
+
+To build a signed release locally:
+
+1. Generate or locate your own upload keystore (.jks/.keystore). Never commit
+   this file — keep it outside the repo, or add its path to .gitignore.
+2. Open the file(s) listed above and replace every YOUR_..._HERE placeholder
+   with your own real values (store password, key password, key alias, etc.).
+3. Re-run the build — Gradle reads the real credentials from your local copy;
+   the placeholders only ever exist in the copy that was uploaded to GitHub.
+
+Never commit a filled-in key.properties, .env, or keystore file — Smart Upload
+Protection will keep redacting or blocking them automatically on future uploads.

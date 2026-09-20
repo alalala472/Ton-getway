@@ -1,0 +1,5 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import ConfigClient from "@/components/ConfigClient";
+export default async function ConfigPage({params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)redirect("/login");const {id}=await params;const c=await db.apiConfig.findFirst({where:{id,userId:u.id},include:{models:{orderBy:{providerModelId:"asc"}},keyHistory:{orderBy:{createdAt:"desc"}}}});if(!c)redirect("/dashboard");return <ConfigClient config={{id:c.id,name:c.name,provider:c.provider,baseUrl:c.baseUrl,model:c.defaultModel,keyLast4:c.gatewayKeyLast4,active:c.active,logMode:c.logMode,maxRequestsPerMin:c.maxRequestsPerMin,proxyEnabled:c.proxyEnabled}} models={c.models.map(m=>({id:m.providerModelId,name:m.displayName||m.providerModelId,free:m.isFree,vision:m.supportsVision,reasoning:m.supportsReasoning}))} history={c.keyHistory.map(k=>({id:k.id,last4:k.keyLast4,created:k.createdAt.toISOString(),revoked:k.revokedAt?.toISOString()||null}))}/>}

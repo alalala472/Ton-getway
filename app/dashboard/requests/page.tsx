@@ -1,0 +1,4 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+export default async function RequestsPage({searchParams}:{searchParams:Promise<{config?:string}>}){const u=await getCurrentUser();if(!u)redirect("/login");const sp=await searchParams;const logs=await db.requestLog.findMany({where:{userId:u.id,...(sp.config?{configId:sp.config}:{})},orderBy:{createdAt:"desc"},take:100});return <main className="container"><a href="/dashboard" className="muted">← Dashboard</a><h1>Request History</h1><div className="grid">{logs.map(l=><div className="card" key={l.id}><div className="row"><strong>{l.method} {l.endpoint}</strong><span className={l.statusCode&&l.statusCode<400?"ok":"err"}>{l.statusCode||"-"}</span></div><p className="muted">{l.model||"-"} · {l.latencyMs??"-"} ms · {l.createdAt.toISOString()}</p>{l.errorCode&&<p className="err">{l.errorCode}</p>}</div>)}</div></main>}

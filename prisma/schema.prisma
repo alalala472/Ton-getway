@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProviderType {
+  OPENAI_COMPATIBLE
+  ANTHROPIC
+  GEMINI
+  OPENROUTER
+  OLLAMA
+  CUSTOM
+}
+
+enum LogMode {
+  METADATA
+  BODY_TRUNCATED
+  FULL
+}
+
+enum ProxyStatus {
+  UNKNOWN
+  HEALTHY
+  DEGRADED
+  FAILED
+}
+
+model User {
+  id           String         @id @default(cuid())
+  username     String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  sessions     Session[]
+  configs      ApiConfig[]
+  logs         RequestLog[]
+  proxies      ProxyEndpoint[]
+  auditLogs    AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ApiConfig {
+  id                 String       @id @default(cuid())
+  userId             String
+  name               String
+  provider           ProviderType
+  baseUrl            String
+  encryptedApiKey    String
+  gatewayKeyHash     String       @unique
+  gatewayKeyLast4    String
+  defaultModel       String?
+  active             Boolean      @default(true)
+  logMode            LogMode      @default(METADATA)
+  maxRequestsPerMin  Int?
+  proxyEnabled       Boolean      @default(false)
+  lastHealthStatus   ProxyStatus  @default(UNKNOWN)
+  lastHealthAt       DateTime?
+  lastError          String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  models             ModelCache[]
+  logs               RequestLog[]
+  usage              UsageDaily[]
+  keyHistory         GatewayKeyHistory[]
+  @@index([userId])
+  @@index([provider])
+}
+
+model GatewayKeyHistory {
+  id          String    @id @default(cuid())
+  configId    String
+  keyLast4   String
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  config      ApiConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  @@index([configId])
+}
+
+model ModelCache {
+  id              String    @id @default(cuid())
+  configId        String
+  providerModelId String
+  displayName     String?
+  isFree          Boolean?
+  supportsVision  Boolean?
+  supportsReasoning Boolean?
+  supportsEmbedding Boolean?
+  contextLength   Int?
+  inputPrice      Float?
+  outputPrice     Float?
+  rawJson         Json?
+  detectedAt      DateTime  @default(now())
+  config           ApiConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  @@unique([configId, providerModelId])
+  @@index([configId])
+}
+
+model RequestLog {
+  id            String    @id @default(cuid())
+  userId        String
+  configId      String?
+  endpoint      String
+  method        String
+  model         String?
+  statusCode    Int?
+  latencyMs     Int?
+  inputTokens   Int?
+  outputTokens  Int?
+  totalTokens   Int?
+  errorCode     String?
+  requestBody   Json?
+  responseBody  Json?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  config        ApiConfig? @relation(fields: [configId], references: [id], onDelete: SetNull)
+  @@index([userId, createdAt])
+  @@index([configId, createdAt])
+}
+
+model UsageDaily {
+  id           String    @id @default(cuid())
+  configId     String
+  date         DateTime
+  requests     Int       @default(0)
+  errors       Int       @default(0)
+  inputTokens  Int       @default(0)
+  outputTokens Int       @default(0)
+  totalTokens  Int       @default(0)
+  config       ApiConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  @@unique([configId, date])
+}
+
+model ProxyEndpoint {
+  id            String      @id @default(cuid())
+  userId        String
+  name          String
+  urlEncrypted  String
+  username      String?
+  passwordEncrypted String?
+  enabled       Boolean     @default(true)
+  status        ProxyStatus @default(UNKNOWN)
+  latencyMs     Int?
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  targetId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
